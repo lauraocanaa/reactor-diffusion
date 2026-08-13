@@ -1,26 +1,119 @@
-# Neutron Diffusion Reactor Solver
+![Python](https://img.shields.io/badge/Python-3.13-blue)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Qiskit](https://img.shields.io/badge/Qiskit-2.4.1-purple)
 
-Numerical solutions to the one-group neutron diffusion eigenvalue problem for a bare slab reactor, using finite differences, validated against analytical solutions and convergence analysis.
+# Reactor Diffusion
 
-## Projects
+A numerical study of one-dimensional neutron diffusion in homogeneous and heterogeneous slab reactors.
 
-- **Bare Slab Reactor** (`notebooks/01\_bare\_slab\_reactor.ipynb`): Finite-difference solution of the one-group neutron diffusion criticality eigenvalue problem for a homogeneous bare slab. Since the reactor is homogeneous, the fission source term is a scalar multiple of the identity matrix, so the generalized eigenvalue problem reduces to a standard one, solved with `numpy.linalg.eigh`. Validated against the analytical solution (k\_eff relative error \~7.3e-9, flux shape L² error \~1.04e-12 — near machine precision, matching the exact discrete-sine eigenvector property of tridiagonal Toeplitz matrices).
+This project uses finite-difference methods and matrix eigenvalue problems to investigate reactor criticality, neutron flux profiles, and the convergence of numerical solutions.
 
-&#x20; An earlier version of this notebook had a grid-boundary alignment bug — grid points were placed directly at the physical boundary (x=0, x=a) rather than at interior points, misaligning with the finite-difference method's implicit ghost-boundary assumption. This produced a flux-shape L² error of 0.046 instead of the correct \~1e-12. The bug, diagnosis, and fix (`dx = a/(N+1)`, interior-only grid) are documented explicitly in the notebook.
+## Overview
 
-- **Heterogeneous Absorber** (`notebooks/02\_heterogeneous\_absorber.ipynb`): Extends the solver to a spatially-varying absorption profile representing a localized control rod at the slab center. This breaks the homogeneous, Toeplitz-matrix structure of notebook 01 — no closed-form analytical solution exists, mirroring the transition from the infinite square well to the harmonic oscillator in the companion `schrodinger-solver` repository.
+The project develops a simple one-dimensional reactor diffusion model and progressively introduces more realistic material behaviour.
 
-&#x20; Validated via convergence analysis against a high-resolution (N=4000) reference solution. The initial sharp step-function absorption profile gave a reduced convergence order (\~1.56) rather than the expected O(h²). This was investigated and attributed to the discontinuous coefficient violating the smoothness assumption underlying finite-difference truncation error analysis — confirmed via a controlled experiment: replacing the step function with a smooth tanh-based transition restored the convergence order to \~2.38, consistent with the hypothesis. The investigation, not just the final result, is documented in the notebook.
+The notebooks investigate:
+
+- A homogeneous bare slab reactor with an analytical solution
+- A slab reactor containing a localised absorbing region
+- The effect of an absorber on the effective multiplication factor and neutron flux
+- Numerical convergence and the effect of discontinuous material properties
+
+The project was developed as part of my summer computational physics work.
 
 ## Methods
 
-Finite-difference discretization of the neutron diffusion equation, eigenvalue/eigenvector solving via `numpy.linalg.eigh`, convergence order analysis via reference-solution comparison.
+The reactor diffusion equation is discretised using a second-order central finite-difference scheme.
 
-## Key Insight
+The resulting matrix eigenvalue problem is solved using NumPy's `eigh` routine to obtain the fundamental mode and effective multiplication factor,
 
-Across this repository and the companion `schrodinger-solver` repository, the same structural principle holds: constant-coefficient finite-difference operators are tridiagonal Toeplitz matrices with exact discrete-sine eigenvectors at any grid resolution, giving near machine-precision eigenvector accuracy. Introducing spatial variation (a potential in the Schrödinger case, an absorption profile here) breaks this structure, and both eigenvalues and eigenvectors then carry genuine O(h²) discretization error. Discontinuous spatial variation degrades this further, below second order, unless the discontinuity is smoothed.
+$$
+A\phi =
+\frac{1}{k_{\mathrm{eff}}}\nu\Sigma_f\phi.
+$$
+
+For the heterogeneous reactor, the position-dependent absorption cross section is included as a diagonal matrix term.
+
+## Notebooks
+
+### `01_bare_slab_reactor.ipynb`
+
+Introduces the one-dimensional homogeneous bare slab reactor.
+
+The numerical solution is validated against the analytical results for:
+
+- The effective multiplication factor $k_{\mathrm{eff}}$
+- The fundamental neutron flux profile
+
+The numerical calculation gives excellent agreement with the analytical solution, with a relative error in $k_{\mathrm{eff}}$ of approximately
+
+$$
+7.26\times10^{-9}.
+$$
+
+The fundamental flux profile also agrees closely with the analytical sinusoidal solution.
+
+![Bare slab flux profile](assets/bare_slab_flux_profile.png)
+
+### `02_heterogeneous_absorber.ipynb`
+
+Extends the model by introducing a localised region of increased absorption, representing a simplified control rod.
+
+The notebook investigates:
+
+- The reduction in $k_{\mathrm{eff}}$ caused by additional absorption
+- Changes in the fundamental neutron flux
+- Convergence with increasing grid resolution
+- The effect of a discontinuous absorption profile on convergence
+
+The absorber reduces $k_{\mathrm{eff}}$ from approximately $1.19734$ to $1.18767$ and produces a clear depression in the flux within the absorber region.
+
+![Heterogeneous flux profile](assets/heterogeneous_flux_profile.png)
+
+The notebook also investigates the observed reduction in convergence order for the sharp absorber. A smooth absorber profile is used as a controlled comparison, showing a substantial change in the fitted convergence order.
+
+![Comparison of heterogeneous and homogeneous flux](assets/heterogeneous_vs_homogeneous_flux.png)
+
+## Key Results
+
+The project demonstrates how numerical modelling can be used to study both the physical behaviour of a reactor and the accuracy of the numerical method.
+
+For the homogeneous bare slab, the numerical solution agrees closely with the analytical solution.
+
+For the heterogeneous case, introducing additional absorption reduces the effective multiplication factor and changes the spatial distribution of the neutron flux.
+
+The convergence study also shows that material discontinuities can affect the observed convergence behaviour of a finite-difference method. The sharp absorber gives a fitted convergence order of approximately $1.56$--$1.57$, while a smooth absorber profile gives an observed order of approximately $2.38$.
+
+## Limitations
+
+The model is intentionally simplified:
+
+- It is one-dimensional.
+- It uses a one-group diffusion approximation.
+- The reactor geometry is restricted to a slab.
+- The heterogeneous case does not have a simple analytical solution, so convergence is assessed against a high-resolution numerical reference.
+- The absorber is represented by a simplified spatial absorption profile.
+
+These limitations provide opportunities for future extensions to more realistic reactor geometries, material properties, and numerical methods.
 
 ## Requirements
 
-Python, NumPy, Matplotlib, Jupyter
+- Python 3
+- NumPy
+- Matplotlib
 
+## Project Structure
+
+```text
+reactor-diffusion/
+│
+├── notebooks/
+│   ├── 01_bare_slab_reactor.ipynb
+│   └── 02_heterogeneous_absorber.ipynb
+│
+├── assets/
+│   ├── bare_slab_flux_profile.png
+│   ├── heterogeneous_flux_profile.png
+│   └── heterogeneous_vs_homogeneous_flux.png
+│
+└── README.md
